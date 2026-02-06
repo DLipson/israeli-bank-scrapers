@@ -69,7 +69,7 @@ function extractTransactionsFromPage(
   }
 
   const result: Transaction[] = transactions.map(rawTransaction => {
-    const date = moment(rawTransaction.DateUTC).milliseconds(0).toISOString();
+    const date = moment(rawTransaction.DateUTC).milliseconds(0).toISOString(true);
     const newTransaction: Transaction = {
       status,
       type: TransactionTypes.Normal,
@@ -254,3 +254,4 @@ class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
 }
 
 export default LeumiScraper;
+

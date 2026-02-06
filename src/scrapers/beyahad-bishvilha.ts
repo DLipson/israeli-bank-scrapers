@@ -64,8 +64,8 @@ function convertTransactions(txns: ScrapedTransaction[], options?: ScraperOption
     const result: Transaction = {
       type: TransactionTypes.Normal,
       status: TransactionStatuses.Completed,
-      date: txnProcessedDate.toISOString(),
-      processedDate: txnProcessedDate.toISOString(),
+      date: txnProcessedDate.toISOString(true),
+      processedDate: txnProcessedDate.toISOString(true),
       originalAmount: chargedAmountTuple.amount,
       originalCurrency: chargedAmountTuple.currency,
       chargedAmount: chargedAmountTuple.amount,
@@ -193,3 +193,4 @@ class BeyahadBishvilhaScraper extends BaseScraperWithBrowser<ScraperSpecificCred
 }
 
 export default BeyahadBishvilhaScraper;
+

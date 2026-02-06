@@ -316,8 +316,8 @@ function convertParsedDataToTransactions(
         ? TransactionTypes.Normal
         : TransactionTypes.Installments,
       status: isPending(transaction) ? TransactionStatuses.Pending : TransactionStatuses.Completed,
-      date: installments ? date.add(installments.number - 1, 'month').toISOString() : date.toISOString(),
-      processedDate: isPending(transaction) ? date.toISOString() : new Date(transaction.debCrdDate).toISOString(),
+      date: installments ? date.add(installments.number - 1, 'month').toISOString(true) : date.toISOString(true),
+      processedDate: isPending(transaction) ? date.toISOString(true) : new Date(transaction.debCrdDate).toISOString(),
       originalAmount,
       originalCurrency: transaction.trnCurrencySymbol,
       chargedAmount,
@@ -551,3 +551,4 @@ class VisaCalScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> 
 }
 
 export default VisaCalScraper;
+

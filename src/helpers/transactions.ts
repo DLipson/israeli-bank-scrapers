@@ -29,7 +29,7 @@ export function fixInstallments(txns: Transaction[]): Transaction[] {
     ) {
       const dateMoment = moment(clonedTxn.date);
       const actualDateMoment = dateMoment.add(clonedTxn.installments.number - 1, 'month');
-      clonedTxn.date = actualDateMoment.toISOString();
+      clonedTxn.date = actualDateMoment.toISOString(true);
     }
     return clonedTxn;
   });

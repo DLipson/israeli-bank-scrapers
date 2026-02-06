@@ -59,8 +59,8 @@ function convertTransactions(
     const result: Transaction = {
       type: TransactionTypes.Normal,
       identifier: txn.OperationNumber,
-      date: moment(txn.OperationDate, DATE_FORMAT).toISOString(),
-      processedDate: moment(txn.ValueDate, DATE_FORMAT).toISOString(),
+      date: moment(txn.OperationDate, DATE_FORMAT).toISOString(true),
+      processedDate: moment(txn.ValueDate, DATE_FORMAT).toISOString(true),
       originalAmount: txn.OperationAmount,
       originalCurrency: 'ILS',
       chargedAmount: txn.OperationAmount,
@@ -184,3 +184,4 @@ class DiscountScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials>
 }
 
 export default DiscountScraper;
+

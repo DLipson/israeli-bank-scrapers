@@ -97,8 +97,8 @@ function convertTransactions(txns: ScrapedTransaction[], options?: ScraperOption
     const result: Transaction = {
       type: TransactionTypes.Normal,
       identifier: txn.referenceNumber,
-      date: moment(txn.eventDate, DATE_FORMAT).toISOString(),
-      processedDate: moment(txn.valueDate, DATE_FORMAT).toISOString(),
+      date: moment(txn.eventDate, DATE_FORMAT).toISOString(true),
+      processedDate: moment(txn.valueDate, DATE_FORMAT).toISOString(true),
       originalAmount: isOutbound ? -txn.eventAmount : txn.eventAmount,
       originalCurrency: 'ILS',
       chargedAmount: isOutbound ? -txn.eventAmount : txn.eventAmount,
@@ -303,3 +303,4 @@ class HapoalimScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials>
 }
 
 export default HapoalimScraper;
+

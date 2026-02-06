@@ -129,7 +129,7 @@ async function fetchAccounts(page: Page, servicesUrl: string, monthMoment: Momen
         return {
           index: parseInt(cardCharge.cardIndex, 10),
           accountNumber: cardCharge.cardNumber,
-          processedDate: moment(cardCharge.billingDate, DATE_FORMAT).toISOString(),
+          processedDate: moment(cardCharge.billingDate, DATE_FORMAT).toISOString(true),
         };
       });
     }
@@ -191,12 +191,12 @@ function convertTransactions(
     const txnMoment = moment(txnDateStr, DATE_FORMAT);
 
     const currentProcessedDate = txn.fullPaymentDate
-      ? moment(txn.fullPaymentDate, DATE_FORMAT).toISOString()
+      ? moment(txn.fullPaymentDate, DATE_FORMAT).toISOString(true)
       : processedDate;
     const result: Transaction = {
       type: getTransactionType(txn),
       identifier: parseInt(isOutbound ? txn.voucherNumberRatzOutbound : txn.voucherNumberRatz, 10),
-      date: txnMoment.toISOString(),
+      date: txnMoment.toISOString(true),
       processedDate: currentProcessedDate,
       originalAmount: isOutbound ? -txn.dealSumOutbound : -txn.dealSum,
       originalCurrency: convertCurrency(txn.currentPaymentCurrency ?? txn.currencyId),
@@ -509,3 +509,4 @@ class IsracardAmexBaseScraper extends BaseScraperWithBrowser<ScraperSpecificCred
 }
 
 export default IsracardAmexBaseScraper;
+
