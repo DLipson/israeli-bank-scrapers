@@ -111,6 +111,51 @@ function removeSpecialCharacters(str: string): string {
   return str.replace(/[^0-9/-]/g, '');
 }
 
+const ACCOUNT_NUMBER_SELECTOR = 'app-masked-number-combo span.display-number-li';
+const ACCOUNT_TEXT_RE = /[^0-9/-]/g;
+
+function normalizeAccountText(text: string): string {
+  return text.replace(ACCOUNT_TEXT_RE, '');
+}
+
+async function clickAccountById(page: Page, accountId: string): Promise<void> {
+  // Account labels may contain invisible bidi/whitespace chars; normalize before matching.
+  const expected = normalizeAccountText(accountId);
+  await page.waitForFunction(
+    (selector, expected, reSource) => {
+      const re = new RegExp(reSource, 'g');
+      const normalize = (text = '') => text.replace(re, '');
+      const elements = Array.from(document.querySelectorAll(selector));
+      return elements.some(el => normalize(el.textContent || '') === expected);
+    },
+    {},
+    ACCOUNT_NUMBER_SELECTOR,
+    expected,
+    ACCOUNT_TEXT_RE.source,
+  );
+
+  const clicked = await page.evaluate(
+    (selector, expected, reSource) => {
+      const re = new RegExp(reSource, 'g');
+      const normalize = (text = '') => text.replace(re, '');
+      const elements = Array.from(document.querySelectorAll(selector));
+      const match = elements.find(el => normalize(el.textContent || '') === expected);
+      if (!match) {
+        return false;
+      }
+      (match as HTMLElement).click();
+      return true;
+    },
+    ACCOUNT_NUMBER_SELECTOR,
+    expected,
+    ACCOUNT_TEXT_RE.source,
+  );
+
+  if (!clicked) {
+    throw new Error(`Failed to click account option for "${expected}"`);
+  }
+}
+
 async function fetchTransactionsForAccount(
   page: Page,
   startDate: Moment,
@@ -184,7 +229,7 @@ async function fetchTransactions(
     if (accountsIds.length > 1) {
       // get list of accounts and check accountId
       await clickByXPath(page, 'xpath///*[contains(@class, "number") and contains(@class, "combo-inner")]');
-      await clickByXPath(page, `xpath///span[contains(text(), '${accountId}')]`);
+      await clickAccountById(page, accountId);
     }
 
     accounts.push(await fetchTransactionsForAccount(page, startDate, removeSpecialCharacters(accountId), options));
