@@ -22,6 +22,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "type-check": "tsc --noEmit",
     "dev": "npm run type-check -- --watch",
+    "watch": "npx babel src --out-dir lib --extensions \".ts\" --source-maps inline --watch & npx tsc --emitDeclarationOnly --watch",
     "build": "npm run lint && npm run clean && npm run build:types && npm run build:js",
     "build:types": "tsc --emitDeclarationOnly",
     "build:js": "babel src --out-dir lib --extensions \".ts\" --source-maps inline --verbose",
