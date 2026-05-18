@@ -17,6 +17,38 @@ describe('Leumi legacy scraper', () => {
     expect(SCRAPERS.leumi.loginFields).toContain('password');
   });
 
+  test('should close the cookie alert before reading the login link', async () => {
+    let cookieAlertClosed = false;
+    const page = {
+      waitForSelector: jest.fn().mockResolvedValue(undefined),
+      waitForFunction: jest.fn().mockResolvedValue(undefined),
+      evaluate: jest.fn().mockImplementation(() => {
+        cookieAlertClosed = true;
+        return Promise.resolve();
+      }),
+      $eval: jest.fn().mockImplementation(() => {
+        if (!cookieAlertClosed) {
+          throw new Error('cookie alert blocks the login link');
+        }
+
+        return Promise.resolve('https://hb2.bankleumi.co.il/login');
+      }),
+      goto: jest.fn().mockResolvedValue(undefined),
+      waitForNavigation: jest.fn().mockResolvedValue(undefined),
+    };
+    const scraper = new LeumiScraper({
+      ...testsConfig.options,
+      companyId: COMPANY_ID,
+    });
+
+    (scraper as any).page = page;
+
+    await scraper.getLoginOptions({ username: 'user', password: 'password' }).checkReadiness?.();
+
+    expect(page.evaluate).toHaveBeenCalledWith(expect.any(Function), '.cookie-alert .hide-alert');
+    expect(page.goto).toHaveBeenCalledWith('https://hb2.bankleumi.co.il/login');
+  });
+
   maybeTestCompanyAPI(COMPANY_ID, config => config.companyAPI.invalidPassword)(
     'should fail on invalid user/password"',
     async () => {

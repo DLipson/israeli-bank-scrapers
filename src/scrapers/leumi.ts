@@ -18,6 +18,7 @@ const FILTERED_TRANSACTIONS_URL = `${BASE_URL}/ChannelWCF/Broker.svc/ProcessRequ
 const DATE_FORMAT = 'DD.MM.YY';
 const ACCOUNT_BLOCKED_MSG = 'המנוי חסום';
 const INVALID_PASSWORD_MSG = 'אחד או יותר מפרטי ההזדהות שמסרת שגויים. ניתן לנסות שוב';
+const COOKIE_ALERT_CLOSE_SELECTOR = '.cookie-alert .hide-alert';
 
 function getPossibleLoginResults() {
   const urls: LoginOptions['possibleResults'] = {
@@ -156,6 +157,12 @@ async function clickAccountById(page: Page, accountId: string): Promise<void> {
   }
 }
 
+async function closeCookieAlert(page: Page): Promise<void> {
+  await page.evaluate(selector => {
+    document.querySelector<HTMLElement>(selector)?.click();
+  }, COOKIE_ALERT_CLOSE_SELECTOR);
+}
+
 async function fetchTransactionsForAccount(
   page: Page,
   startDate: Moment,
@@ -242,6 +249,7 @@ async function navigateToLogin(page: Page): Promise<void> {
   const loginButtonSelector = '.enter_account';
   debug('wait for homepage to click on login button');
   await waitUntilElementFound(page, loginButtonSelector);
+  await closeCookieAlert(page);
   debug('navigate to login page');
   const loginUrl = await pageEval(page, loginButtonSelector, null, element => {
     return (element as any).href;
@@ -299,4 +307,3 @@ class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
 }
 
 export default LeumiScraper;
-
