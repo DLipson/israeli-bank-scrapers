@@ -4,7 +4,6 @@ import { SHEKEL_CURRENCY } from '../constants';
 import { getDebug } from '../helpers/debug';
 import { clickButton, fillInput, pageEval, pageEvalAll, waitUntilElementFound } from '../helpers/elements-interactions';
 import { getRawTransaction } from '../helpers/transactions';
-import { waitForNavigation } from '../helpers/navigation';
 import { TransactionStatuses, TransactionTypes, type Transaction, type TransactionsAccount } from '../transactions';
 import { BaseScraperWithBrowser, LoginResults, type LoginOptions } from './base-scraper-with-browser';
 import { type ScraperOptions, type ScraperScrapingResult } from './interface';
@@ -255,9 +254,8 @@ async function navigateToLogin(page: Page): Promise<void> {
     return (element as any).href;
   });
   debug(`navigating to page (${loginUrl})`);
-  await page.goto(loginUrl);
+  await page.goto(loginUrl, { waitUntil: 'networkidle2' });
   debug('waiting for page to be loaded (networkidle2)');
-  await waitForNavigation(page, { waitUntil: 'networkidle2' });
   debug('waiting for components of login to enter credentials');
   await Promise.all([
     waitUntilElementFound(page, 'input[placeholder="שם משתמש"]', true),

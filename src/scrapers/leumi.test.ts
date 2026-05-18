@@ -46,7 +46,30 @@ describe('Leumi legacy scraper', () => {
     await scraper.getLoginOptions({ username: 'user', password: 'password' }).checkReadiness?.();
 
     expect(page.evaluate).toHaveBeenCalledWith(expect.any(Function), '.cookie-alert .hide-alert');
-    expect(page.goto).toHaveBeenCalledWith('https://hb2.bankleumi.co.il/login');
+    expect(page.goto).toHaveBeenCalledWith('https://hb2.bankleumi.co.il/login', { waitUntil: 'networkidle2' });
+  });
+
+  test('should not wait for another navigation after opening the login page', async () => {
+    const page = {
+      waitForSelector: jest.fn().mockResolvedValue(undefined),
+      waitForFunction: jest.fn().mockResolvedValue(undefined),
+      evaluate: jest.fn().mockResolvedValue(undefined),
+      $eval: jest.fn().mockResolvedValue('https://hb2.bankleumi.co.il/login'),
+      goto: jest.fn().mockResolvedValue(undefined),
+      waitForNavigation: jest.fn().mockRejectedValue(new Error('no second navigation')),
+    };
+    const scraper = new LeumiScraper({
+      ...testsConfig.options,
+      companyId: COMPANY_ID,
+    });
+
+    (scraper as any).page = page;
+
+    await expect(scraper.getLoginOptions({ username: 'user', password: 'password' }).checkReadiness?.()).resolves.toBe(
+      undefined,
+    );
+
+    expect(page.waitForNavigation).not.toHaveBeenCalled();
   });
 
   maybeTestCompanyAPI(COMPANY_ID, config => config.companyAPI.invalidPassword)(
