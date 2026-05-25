@@ -18,3 +18,10 @@
 - **Root Cause**: After `page.goto` opened the login URL, the readiness flow waited for another navigation that might never happen.
 - **Fix**: Let `page.goto` wait for `networkidle2` directly and proceed to the login-field selectors without a second navigation wait.
 - **Verification**: Added a regression test that fails if readiness waits for a second navigation after opening the login page; ran the full local Jest suite with live-company tests disabled and `npm run type-check`.
+
+## 2026-05-25 - Leumi Invalid Password Message Timeout
+
+- **Bug**: Leumi scraping could fail with a generic timeout while waiting for the invalid-password message after login.
+- **Root Cause**: The post-login `waitForSelector` for the invalid-password XPath used Puppeteer's default timeout instead of the longer window already used for the other post-login checks.
+- **Fix**: Increased the invalid-password selector wait to 60 seconds in `src/scrapers/leumi.ts`.
+- **Verification**: Added a regression test in `src/scrapers/leumi.test.ts` that asserts the invalid-password selector is waited on with a `60000` ms timeout; confirmed it failed before the fix and passed afterward. Ran `npx jest --runInBand` with a temporary `TESTS_CONFIG` and got 18 passing suites, with 1 live-company suite skipped.

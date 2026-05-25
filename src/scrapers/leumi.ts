@@ -268,7 +268,9 @@ async function waitForPostLogin(page: Page): Promise<void> {
   await Promise.race([
     waitUntilElementFound(page, 'a[title="דלג לחשבון"]', true, 60000),
     waitUntilElementFound(page, 'div.main-content', false, 60000),
-    page.waitForSelector(`xpath//div[contains(string(),"${INVALID_PASSWORD_MSG}")]`),
+    page.waitForSelector(`xpath//div[contains(string(),"${INVALID_PASSWORD_MSG}")]`, {
+      timeout: 60000,
+    }),
     waitUntilElementFound(page, 'form[action="/changepassword"]', true, 60000), // not sure if they kept this one
   ]);
 }

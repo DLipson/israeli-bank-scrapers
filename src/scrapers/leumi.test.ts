@@ -72,6 +72,31 @@ describe('Leumi legacy scraper', () => {
     expect(page.waitForNavigation).not.toHaveBeenCalled();
   });
 
+  test('should wait longer for the invalid password message after login', async () => {
+    const options = {
+      companyId: COMPANY_ID,
+      startDate: new Date('2026-05-25T00:00:00.000Z'),
+    };
+    const page = {
+      waitForSelector: jest.fn().mockResolvedValue(undefined),
+      waitForFunction: jest.fn().mockResolvedValue(undefined),
+      evaluate: jest.fn().mockResolvedValue(undefined),
+      $eval: jest.fn().mockResolvedValue('https://hb2.bankleumi.co.il/login'),
+      goto: jest.fn().mockResolvedValue(undefined),
+      waitForNavigation: jest.fn().mockResolvedValue(undefined),
+    };
+    const scraper = new LeumiScraper(options as any);
+
+    (scraper as any).page = page;
+
+    await scraper.getLoginOptions({ username: 'user', password: 'password' }).postAction?.();
+
+    expect(page.waitForSelector).toHaveBeenCalledWith(
+      `xpath//div[contains(string(),"אחד או יותר מפרטי ההזדהות שמסרת שגויים. ניתן לנסות שוב")]`,
+      { timeout: 60000 },
+    );
+  });
+
   maybeTestCompanyAPI(COMPANY_ID, config => config.companyAPI.invalidPassword)(
     'should fail on invalid user/password"',
     async () => {
