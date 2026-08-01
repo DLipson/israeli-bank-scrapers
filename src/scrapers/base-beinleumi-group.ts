@@ -81,7 +81,7 @@ function getTxnAmount(txn: ScrapedTransaction) {
 
 function convertTransactions(txns: ScrapedTransaction[], options?: ScraperOptions): Transaction[] {
   return txns.map((txn): Transaction => {
-    const convertedDate = moment(txn.date, DATE_FORMAT).toISOString();
+    const convertedDate = moment(txn.date, DATE_FORMAT).toISOString(true);
     const convertedAmount = getTxnAmount(txn);
     const result: Transaction = {
       type: TransactionTypes.Normal,
@@ -542,3 +542,4 @@ class BeinleumiGroupBaseScraper extends BaseScraperWithBrowser<ScraperSpecificCr
 }
 
 export default BeinleumiGroupBaseScraper;
+

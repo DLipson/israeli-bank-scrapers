@@ -76,7 +76,7 @@ type TransactionsTr = { id: string; innerDivs: string[] };
 
 function convertTransactions(txns: ScrapedTransaction[], options?: ScraperOptions): Transaction[] {
   return txns.map(txn => {
-    const convertedDate = moment(txn.date, DATE_FORMAT).toISOString();
+    const convertedDate = moment(txn.date, DATE_FORMAT).toISOString(true);
     const convertedAmount = getTxnAmount(txn);
     const result: Transaction = {
       type: TransactionTypes.Normal,
@@ -310,3 +310,4 @@ class YahavScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
 }
 
 export default YahavScraper;
+

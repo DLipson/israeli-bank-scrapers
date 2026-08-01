@@ -219,7 +219,7 @@ async function convertTransactions(
     txns.map(async row => {
       const moreDetails = await getMoreDetails(row);
 
-      const txnDate = moment(row.MC02PeulaTaaEZ, moment.HTML5_FMT.DATETIME_LOCAL_SECONDS).toISOString();
+      const txnDate = moment(row.MC02PeulaTaaEZ, moment.HTML5_FMT.DATETIME_LOCAL_SECONDS).toISOString(true);
 
       const result: Transaction = {
         type: TransactionTypes.Normal,
@@ -256,7 +256,7 @@ async function extractPendingTransactions(page: Frame): Promise<Transaction[]> {
 
   return pendingTxn
     .map(([dateStr, description, incomeAmountStr, amountStr]) => ({
-      date: moment(dateStr, 'DD/MM/YY').toISOString(),
+      date: moment(dateStr, 'DD/MM/YY').toISOString(true),
       amount: parseFloat(amountStr.replaceAll(',', '')),
       description,
       incomeAmountStr, // TODO: handle incomeAmountStr once we know the sign of it
@@ -418,3 +418,4 @@ class MizrahiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> 
 }
 
 export default MizrahiScraper;
+

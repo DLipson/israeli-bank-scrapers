@@ -252,7 +252,7 @@ export function getMemo({
 
 function mapTransaction(rawTransaction: ScrapedTransaction, options?: ScraperOptions): Transaction {
   const isPending = rawTransaction.paymentDate === null;
-  const processedDate = moment(isPending ? rawTransaction.purchaseDate : rawTransaction.paymentDate).toISOString();
+  const processedDate = moment(isPending ? rawTransaction.purchaseDate : rawTransaction.paymentDate).toISOString(true);
   const status = isPending ? TransactionStatuses.Pending : TransactionStatuses.Completed;
 
   const installments = getInstallmentsInfo(rawTransaction.comments);
@@ -262,7 +262,7 @@ function mapTransaction(rawTransaction: ScrapedTransaction, options?: ScraperOpt
 
   const result: Transaction = {
     type: getTransactionType(rawTransaction.planName, rawTransaction.planTypeId),
-    date: moment(rawTransaction.purchaseDate).toISOString(),
+    date: moment(rawTransaction.purchaseDate).toISOString(true),
     processedDate,
     originalAmount: -rawTransaction.originalAmount,
     originalCurrency: rawTransaction.originalCurrency,
@@ -450,3 +450,4 @@ class MaxScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
 }
 
 export default MaxScraper;
+
