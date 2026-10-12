@@ -1,5 +1,5 @@
 import moment, { type Moment } from 'moment';
-import { type Page } from 'puppeteer';
+import { type Page, type PuppeteerLifeCycleEvent } from 'puppeteer';
 import { SHEKEL_CURRENCY } from '../../constants';
 import { getDebug } from '../../helpers/debug';
 import { clickButton, fillInput, pageEvalAll, waitUntilElementFound } from '../../helpers/elements-interactions';
@@ -390,6 +390,22 @@ async function waitForPostLogin(page: Page): Promise<void> {
 type ScraperSpecificCredentials = { username: string; password: string };
 
 class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
+  /**
+   * /H/Login.html redirects to the gate-keeper page, whose script soon moves to its Hebrew page.
+   * When that move starts before the first page is ready, goto fails with net::ERR_ABORTED even
+   * though the login page opens. checkReadiness then waits for the login form, so continue.
+   */
+  async navigateTo(url: string, waitUntil?: PuppeteerLifeCycleEvent, retries?: number): Promise<void> {
+    try {
+      await super.navigateTo(url, waitUntil, retries);
+    } catch (error) {
+      if (url !== LOGIN_URL || !(error instanceof Error) || !error.message.includes('net::ERR_ABORTED')) {
+        throw error;
+      }
+      debug(`login navigation was replaced by a redirect (${error.message}); waiting for the login form`);
+    }
+  }
+
   getLoginOptions(credentials: ScraperSpecificCredentials) {
     return {
       loginUrl: LOGIN_URL,

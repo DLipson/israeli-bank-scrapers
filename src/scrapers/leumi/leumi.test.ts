@@ -46,6 +46,23 @@ describe('Leumi legacy scraper', () => {
     expect(page.waitForNavigation).not.toHaveBeenCalled();
   });
 
+  test('should continue when the login navigation is aborted by a redirect, and only then', async () => {
+    const scraper = new LeumiScraper({
+      ...testsConfig.options,
+      companyId: COMPANY_ID,
+    });
+    const aborted = new Error('net::ERR_ABORTED at https://hb2.bankleumi.co.il/H/Login.html');
+    const goto = jest.fn().mockRejectedValue(aborted);
+    (scraper as any).page = { goto };
+    const loginUrl = scraper.getLoginOptions({ username: 'user', password: 'password' }).loginUrl;
+
+    await expect(scraper.navigateTo(loginUrl, 'domcontentloaded')).resolves.toBeUndefined();
+    await expect(scraper.navigateTo('https://hb2.bankleumi.co.il/other', 'domcontentloaded')).rejects.toThrow(aborted);
+
+    goto.mockRejectedValue(new Error('Navigation timeout of 30000 ms exceeded'));
+    await expect(scraper.navigateTo(loginUrl, 'domcontentloaded')).rejects.toThrow('Navigation timeout');
+  });
+
   test('should not wait for another navigation after opening the login page', async () => {
     const page = {
       waitForSelector: jest.fn().mockResolvedValue(undefined),
