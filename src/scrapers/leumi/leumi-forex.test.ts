@@ -104,7 +104,7 @@ describe('mapForeignTransaction', () => {
 
     // Compared against moment's own parsing (rather than a hardcoded ISO string) so the
     // assertion does not depend on the machine's local timezone.
-    const expectedDate = moment('18/06/26', 'DD/MM/YY').milliseconds(0).toISOString();
+    const expectedDate = moment('18/06/26', 'DD/MM/YY').milliseconds(0).toISOString(true);
     expect(transaction.date).toBe(expectedDate);
   });
 

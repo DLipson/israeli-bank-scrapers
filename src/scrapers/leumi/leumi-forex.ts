@@ -113,7 +113,7 @@ export function getForeignTransactionAmount(debitCellText: string, creditCellTex
 }
 
 export function mapForeignTransaction(cells: string[], currency: string, options?: ScraperOptions): Transaction {
-  const date = moment(cells[FOREIGN_COLUMN_DATE], FOREIGN_DATE_FORMAT).milliseconds(0).toISOString();
+  const date = moment(cells[FOREIGN_COLUMN_DATE], FOREIGN_DATE_FORMAT).milliseconds(0).toISOString(true);
   const amount = getForeignTransactionAmount(cells[FOREIGN_COLUMN_DEBIT], cells[FOREIGN_COLUMN_CREDIT]);
 
   const transaction: Transaction = {
