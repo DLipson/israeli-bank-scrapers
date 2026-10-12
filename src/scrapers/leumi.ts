@@ -2,7 +2,7 @@ import moment, { type Moment } from 'moment';
 import { type Page } from 'puppeteer';
 import { SHEKEL_CURRENCY } from '../constants';
 import { getDebug } from '../helpers/debug';
-import { clickButton, fillInput, pageEval, pageEvalAll, waitUntilElementFound } from '../helpers/elements-interactions';
+import { clickButton, fillInput, pageEvalAll, waitUntilElementFound } from '../helpers/elements-interactions';
 import { fetchGetWithinPage } from '../helpers/fetch';
 import { getRawTransaction } from '../helpers/transactions';
 import { TransactionStatuses, TransactionTypes, type Transaction, type TransactionsAccount } from '../transactions';
@@ -11,7 +11,9 @@ import { type ScraperOptions, type ScraperScrapingResult } from './interface';
 
 const debug = getDebug('leumi');
 const BASE_URL = 'https://hb2.bankleumi.co.il';
-const LOGIN_URL = 'https://www.leumi.co.il/he';
+// The login page itself. The www.leumi.co.il home page links here, but its "load" event can take
+// longer than the navigation timeout (trackers, rate widgets), so the scraper no longer goes through it.
+const LOGIN_URL = `${BASE_URL}/H/Login.html`;
 const TRANSACTIONS_URL = `${BASE_URL}/eBanking/SO/SPA.aspx#/ts/BusinessAccountTrx?WidgetPar=1`;
 const FILTERED_TRANSACTIONS_URL = `${BASE_URL}/ChannelWCF/Broker.svc/ProcessRequest?moduleName=UC_SO_27_GetBusinessAccountTrx`;
 const SAVINGS_URL = `${BASE_URL}/uiapiproxy/v1/digital-retails/mobile/accounts/1/Deposits?operationList=true`;
@@ -363,18 +365,8 @@ async function fetchSavingsAccounts(
   return allSavingsAccounts;
 }
 
-async function navigateToLogin(page: Page): Promise<void> {
-  const loginButtonSelector = '.enter_account';
-  debug('wait for homepage to click on login button');
-  await waitUntilElementFound(page, loginButtonSelector);
+async function waitForLoginForm(page: Page): Promise<void> {
   await closeCookieAlert(page);
-  debug('navigate to login page');
-  const loginUrl = await pageEval(page, loginButtonSelector, null, element => {
-    return (element as any).href;
-  });
-  debug(`navigating to page (${loginUrl})`);
-  await page.goto(loginUrl, { waitUntil: 'networkidle2' });
-  debug('waiting for page to be loaded (networkidle2)');
   debug('waiting for components of login to enter credentials');
   await Promise.all([
     waitUntilElementFound(page, 'input[placeholder="שם משתמש"]', true),
@@ -402,7 +394,9 @@ class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
       loginUrl: LOGIN_URL,
       fields: createLoginFields(credentials),
       submitButtonSelector: "button[type='submit']",
-      checkReadiness: async () => navigateToLogin(this.page),
+      // Only the page's HTML is needed; the login form is awaited in checkReadiness.
+      waitUntil: 'domcontentloaded' as const,
+      checkReadiness: async () => waitForLoginForm(this.page),
       postAction: async () => waitForPostLogin(this.page),
       possibleResults: getPossibleLoginResults(),
     };
