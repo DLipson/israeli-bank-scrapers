@@ -20,22 +20,11 @@ describe('Leumi legacy scraper', () => {
     expect(SCRAPERS.leumi.loginFields).toContain('password');
   });
 
-  test('should close the cookie alert before reading the login link', async () => {
-    let cookieAlertClosed = false;
+  test('should open the login page directly, close the cookie alert, and wait for the login form', async () => {
     const page = {
       waitForSelector: jest.fn().mockResolvedValue(undefined),
       waitForFunction: jest.fn().mockResolvedValue(undefined),
-      evaluate: jest.fn().mockImplementation(() => {
-        cookieAlertClosed = true;
-        return Promise.resolve();
-      }),
-      $eval: jest.fn().mockImplementation(() => {
-        if (!cookieAlertClosed) {
-          throw new Error('cookie alert blocks the login link');
-        }
-
-        return Promise.resolve('https://hb2.bankleumi.co.il/login');
-      }),
+      evaluate: jest.fn().mockResolvedValue(undefined),
       goto: jest.fn().mockResolvedValue(undefined),
       waitForNavigation: jest.fn().mockResolvedValue(undefined),
     };
@@ -46,10 +35,15 @@ describe('Leumi legacy scraper', () => {
 
     (scraper as any).page = page;
 
-    await scraper.getLoginOptions({ username: 'user', password: 'password' }).checkReadiness?.();
+    const loginOptions = scraper.getLoginOptions({ username: 'user', password: 'password' });
+    await loginOptions.checkReadiness?.();
 
+    expect(loginOptions.loginUrl).toBe('https://hb2.bankleumi.co.il/H/Login.html');
+    expect(loginOptions.waitUntil).toBe('domcontentloaded');
     expect(page.evaluate).toHaveBeenCalledWith(expect.any(Function), '.cookie-alert .hide-alert');
-    expect(page.goto).toHaveBeenCalledWith('https://hb2.bankleumi.co.il/login', { waitUntil: 'networkidle2' });
+    expect(page.waitForSelector).toHaveBeenCalledWith('input[placeholder="שם משתמש"]', expect.anything());
+    expect(page.goto).not.toHaveBeenCalled();
+    expect(page.waitForNavigation).not.toHaveBeenCalled();
   });
 
   test('should not wait for another navigation after opening the login page', async () => {
