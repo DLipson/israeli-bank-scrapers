@@ -302,4 +302,3 @@ class HapoalimScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials>
 }
 
 export default HapoalimScraper;
-

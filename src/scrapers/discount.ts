@@ -183,4 +183,3 @@ class DiscountScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials>
 }
 
 export default DiscountScraper;
-

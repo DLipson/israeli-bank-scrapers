@@ -89,7 +89,7 @@ describe('Leumi legacy scraper', () => {
     await scraper.getLoginOptions({ username: 'user', password: 'password' }).postAction?.();
 
     expect(page.waitForSelector).toHaveBeenCalledWith(
-      `xpath//div[contains(string(),"אחד או יותר מפרטי ההזדהות שמסרת שגויים. ניתן לנסות שוב")]`,
+      'xpath//div[contains(string(),"אחד או יותר מפרטי ההזדהות שמסרת שגויים. ניתן לנסות שוב")]',
       { timeout: 60000 },
     );
   });

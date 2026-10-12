@@ -333,4 +333,3 @@ class UnionBankScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials
 }
 
 export default UnionBankScraper;
-

@@ -635,4 +635,3 @@ class IsracardAmexBaseScraper extends BaseScraperWithBrowser<ScraperSpecificCred
 }
 
 export default IsracardAmexBaseScraper;
-

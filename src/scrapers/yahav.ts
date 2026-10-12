@@ -310,4 +310,3 @@ class YahavScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
 }
 
 export default YahavScraper;
-

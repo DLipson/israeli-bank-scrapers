@@ -542,4 +542,3 @@ class BeinleumiGroupBaseScraper extends BaseScraperWithBrowser<ScraperSpecificCr
 }
 
 export default BeinleumiGroupBaseScraper;
-

@@ -450,4 +450,3 @@ class MaxScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
 }
 
 export default MaxScraper;
-

@@ -418,4 +418,3 @@ class MizrahiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> 
 }
 
 export default MizrahiScraper;
-

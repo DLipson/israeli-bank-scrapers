@@ -193,4 +193,3 @@ class BeyahadBishvilhaScraper extends BaseScraperWithBrowser<ScraperSpecificCred
 }
 
 export default BeyahadBishvilhaScraper;
-

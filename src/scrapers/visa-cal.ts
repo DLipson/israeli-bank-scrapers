@@ -675,4 +675,3 @@ class VisaCalScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> 
 }
 
 export default VisaCalScraper;
-
