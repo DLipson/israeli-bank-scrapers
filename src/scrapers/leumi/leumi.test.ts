@@ -14,6 +14,7 @@ function fakePage(overrides: Record<string, unknown> = {}) {
   return {
     waitForSelector: jest.fn().mockResolvedValue(undefined),
     waitForFunction: jest.fn().mockResolvedValue(undefined),
+    waitForResponse: jest.fn().mockResolvedValue(undefined),
     evaluate: jest.fn().mockResolvedValue({ title: '', text: '' }),
     $eval: jest.fn().mockResolvedValue('https://hb2.bankleumi.co.il/H/Login.html'),
     click: jest.fn().mockResolvedValue(undefined),
@@ -56,6 +57,12 @@ describe('Leumi legacy scraper', () => {
     expect(page.waitForSelector).toHaveBeenCalledWith('input[placeholder="שם משתמש"]', expect.anything());
     expect(page.goto).not.toHaveBeenCalled();
     expect(page.waitForNavigation).not.toHaveBeenCalled();
+    // The login app must have started before the form is filled; listening starts before the click.
+    expect(page.waitForResponse).toHaveBeenCalledWith(expect.any(Function), { timeout: 30000 });
+    expect(page.waitForResponse.mock.invocationCallOrder[0]).toBeLessThan(page.click.mock.invocationCallOrder[0]);
+    const isAppReady = page.waitForResponse.mock.calls[0][0];
+    expect(isAppReady({ url: () => 'https://sa.bankleumi.co.il/api/v2/auth/key_exchange' })).toBe(true);
+    expect(isAppReady({ url: () => 'https://sa.bankleumi.co.il/api/v2/auth/assert' })).toBe(false);
   });
 
   test('should continue when the login navigation is aborted by a redirect, and only then', async () => {

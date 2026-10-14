@@ -19,6 +19,8 @@ const BASE_URL = 'https://hb2.bankleumi.co.il';
 const HOME_URL = 'https://www.leumi.co.il/he';
 const LOGIN_URL = `${BASE_URL}/H/Login.html`;
 const ENTER_ACCOUNT_SELECTOR = '.enter_account';
+const LOGIN_APP_READY_PATH = '/api/v2/auth/key_exchange';
+const LOGIN_APP_READY_TIMEOUT = 30000;
 const TRANSACTIONS_URL = `${BASE_URL}/eBanking/SO/SPA.aspx#/ts/BusinessAccountTrx?WidgetPar=1`;
 const FILTERED_TRANSACTIONS_URL = `${BASE_URL}/ChannelWCF/Broker.svc/ProcessRequest?moduleName=UC_SO_27_GetBusinessAccountTrx`;
 const SAVINGS_URL = `${BASE_URL}/uiapiproxy/v1/digital-retails/mobile/accounts/1/Deposits?operationList=true`;
@@ -429,11 +431,24 @@ async function openLoginFromHomePage(page: Page): Promise<void> {
   const href = await page.$eval(ENTER_ACCOUNT_SELECTOR, element => (element as HTMLAnchorElement).href).catch(() => '');
   debug(`"enter account" link found on ${shortUrl(page.url())}, points to ${shortUrl(href)}`);
   await closeCookieAlert(page);
+  // The login page is a Next.js app: its HTML, form included, arrives before its scripts take over
+  // the form. Submitting before that posts the whole form natively, which Leumi's firewall answers
+  // with "Request Rejected" (2026-10-14). The app's first call once it runs is auth/key_exchange.
+  // Start listening before the click, so an early response is not missed.
+  const appStarted = page
+    .waitForResponse(response => response.url().includes(LOGIN_APP_READY_PATH), { timeout: LOGIN_APP_READY_TIMEOUT })
+    .then(() => true)
+    .catch(() => false);
   debug('click the "enter account" link');
   await page.click(ENTER_ACCOUNT_SELECTOR);
   // The login page is still loading (and changes page once more), so do not run page scripts
   // such as closeCookieAlert here; the selector waits below survive page changes.
   await waitForLoginFields(page);
+  if (await appStarted) {
+    debug(`login app started (${LOGIN_APP_READY_PATH} answered)`);
+  } else {
+    debug(`no ${LOGIN_APP_READY_PATH} within ${LOGIN_APP_READY_TIMEOUT} ms; filling the form anyway`);
+  }
   await logPageState(page, 'login form ready');
 }
 
