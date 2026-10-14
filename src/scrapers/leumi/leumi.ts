@@ -12,9 +12,13 @@ import { fetchForeignCurrencyAccounts } from './leumi-forex';
 
 const debug = getDebug('leumi');
 const BASE_URL = 'https://hb2.bankleumi.co.il';
-// The login page itself. The www.leumi.co.il home page links here, but its "load" event can take
-// longer than the navigation timeout (trackers, rate widgets), so the scraper no longer goes through it.
+// Login starts on the home page and clicks "כניסה לחשבון", the way a person arrives at the login
+// page. Its "load" event can take longer than the navigation timeout (trackers, rate widgets), so
+// only the HTML is awaited. Going straight to LOGIN_URL worked until Leumi's firewall started
+// rejecting the login (2026-10-14).
+const HOME_URL = 'https://www.leumi.co.il/he';
 const LOGIN_URL = `${BASE_URL}/H/Login.html`;
+const ENTER_ACCOUNT_SELECTOR = '.enter_account';
 const TRANSACTIONS_URL = `${BASE_URL}/eBanking/SO/SPA.aspx#/ts/BusinessAccountTrx?WidgetPar=1`;
 const FILTERED_TRANSACTIONS_URL = `${BASE_URL}/ChannelWCF/Broker.svc/ProcessRequest?moduleName=UC_SO_27_GetBusinessAccountTrx`;
 const SAVINGS_URL = `${BASE_URL}/uiapiproxy/v1/digital-retails/mobile/accounts/1/Deposits?operationList=true`;
@@ -366,8 +370,18 @@ async function fetchSavingsAccounts(
   return allSavingsAccounts;
 }
 
-async function waitForLoginForm(page: Page): Promise<void> {
+async function openLoginFromHomePage(page: Page): Promise<void> {
+  debug('wait for the "enter account" link on the home page');
+  await waitUntilElementFound(page, ENTER_ACCOUNT_SELECTOR, true);
   await closeCookieAlert(page);
+  debug('click the "enter account" link');
+  await page.click(ENTER_ACCOUNT_SELECTOR);
+  // The login page is still loading (and changes page once more), so do not run page scripts
+  // such as closeCookieAlert here; the selector waits below survive page changes.
+  await waitForLoginFields(page);
+}
+
+async function waitForLoginFields(page: Page): Promise<void> {
   debug('waiting for components of login to enter credentials');
   await Promise.all([
     waitUntilElementFound(page, 'input[placeholder="שם משתמש"]', true),
@@ -391,15 +405,23 @@ type ScraperSpecificCredentials = { username: string; password: string };
 
 class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
   /**
-   * /H/Login.html redirects to the gate-keeper page, whose script soon moves to its Hebrew page.
-   * When that move starts before the first page is ready, goto fails with net::ERR_ABORTED even
-   * though the login page opens. checkReadiness then waits for the login form, so continue.
+   * The home page and /H/Login.html both move on by script (the login page to its gate-keeper
+   * Hebrew page). When that move starts before the first page is ready, goto fails with
+   * net::ERR_ABORTED although the page opens. checkReadiness then waits for the expected
+   * elements, so continue.
    */
   async navigateTo(url: string, waitUntil?: PuppeteerLifeCycleEvent, retries?: number): Promise<void> {
+    if (url === HOME_URL) {
+      // On some networks the home page takes more than 30 s to reach DOMContentLoaded, but its
+      // "enter account" link renders early. Start loading and let checkReadiness wait for the link.
+      this.page.goto(url).catch(error => debug(`home page did not finish loading: ${String(error)}`));
+      return;
+    }
     try {
       await super.navigateTo(url, waitUntil, retries);
     } catch (error) {
-      if (url !== LOGIN_URL || !(error instanceof Error) || !error.message.includes('net::ERR_ABORTED')) {
+      const ownPage = url === HOME_URL || url === LOGIN_URL;
+      if (!ownPage || !(error instanceof Error) || !error.message.includes('net::ERR_ABORTED')) {
         throw error;
       }
       debug(`login navigation was replaced by a redirect (${error.message}); waiting for the login form`);
@@ -408,12 +430,12 @@ class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
 
   getLoginOptions(credentials: ScraperSpecificCredentials) {
     return {
-      loginUrl: LOGIN_URL,
+      loginUrl: HOME_URL,
       fields: createLoginFields(credentials),
       submitButtonSelector: "button[type='submit']",
       // Only the page's HTML is needed; the login form is awaited in checkReadiness.
       waitUntil: 'domcontentloaded' as const,
-      checkReadiness: async () => waitForLoginForm(this.page),
+      checkReadiness: async () => openLoginFromHomePage(this.page),
       postAction: async () => waitForPostLogin(this.page),
       possibleResults: getPossibleLoginResults(),
     };

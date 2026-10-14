@@ -9,6 +9,23 @@ const COMPANY_ID = 'leumi'; // TODO this property should be hard-coded in the pr
 const testsConfig = getTestsConfig();
 const debug = getDebug('leumi-test');
 
+/** A fake page with everything the login flow and its tracing call. */
+function fakePage(overrides: Record<string, unknown> = {}) {
+  return {
+    waitForSelector: jest.fn().mockResolvedValue(undefined),
+    waitForFunction: jest.fn().mockResolvedValue(undefined),
+    evaluate: jest.fn().mockResolvedValue({ title: '', text: '' }),
+    $eval: jest.fn().mockResolvedValue('https://hb2.bankleumi.co.il/H/Login.html'),
+    click: jest.fn().mockResolvedValue(undefined),
+    goto: jest.fn().mockResolvedValue(undefined),
+    waitForNavigation: jest.fn().mockResolvedValue(undefined),
+    url: jest.fn().mockReturnValue('https://hb2.bankleumi.co.il/staticcontent/gate-keeper/he/'),
+    on: jest.fn(),
+    mainFrame: jest.fn(),
+    ...overrides,
+  };
+}
+
 describe('Leumi legacy scraper', () => {
   beforeAll(() => {
     extendAsyncTimeout(); // The default timeout is 5 seconds per async test, this function extends the timeout value
@@ -20,14 +37,8 @@ describe('Leumi legacy scraper', () => {
     expect(SCRAPERS.leumi.loginFields).toContain('password');
   });
 
-  test('should open the login page directly, close the cookie alert, and wait for the login form', async () => {
-    const page = {
-      waitForSelector: jest.fn().mockResolvedValue(undefined),
-      waitForFunction: jest.fn().mockResolvedValue(undefined),
-      evaluate: jest.fn().mockResolvedValue(undefined),
-      goto: jest.fn().mockResolvedValue(undefined),
-      waitForNavigation: jest.fn().mockResolvedValue(undefined),
-    };
+  test('should start on the home page and click through to the login form', async () => {
+    const page = fakePage();
     const scraper = new LeumiScraper({
       ...testsConfig.options,
       companyId: COMPANY_ID,
@@ -38,9 +49,10 @@ describe('Leumi legacy scraper', () => {
     const loginOptions = scraper.getLoginOptions({ username: 'user', password: 'password' });
     await loginOptions.checkReadiness?.();
 
-    expect(loginOptions.loginUrl).toBe('https://hb2.bankleumi.co.il/H/Login.html');
+    expect(loginOptions.loginUrl).toBe('https://www.leumi.co.il/he');
     expect(loginOptions.waitUntil).toBe('domcontentloaded');
     expect(page.evaluate).toHaveBeenCalledWith(expect.any(Function), '.cookie-alert .hide-alert');
+    expect(page.click).toHaveBeenCalledWith('.enter_account');
     expect(page.waitForSelector).toHaveBeenCalledWith('input[placeholder="שם משתמש"]', expect.anything());
     expect(page.goto).not.toHaveBeenCalled();
     expect(page.waitForNavigation).not.toHaveBeenCalled();
@@ -54,24 +66,30 @@ describe('Leumi legacy scraper', () => {
     const aborted = new Error('net::ERR_ABORTED at https://hb2.bankleumi.co.il/H/Login.html');
     const goto = jest.fn().mockRejectedValue(aborted);
     (scraper as any).page = { goto };
-    const loginUrl = scraper.getLoginOptions({ username: 'user', password: 'password' }).loginUrl;
+    const loginPage = 'https://hb2.bankleumi.co.il/H/Login.html';
 
-    await expect(scraper.navigateTo(loginUrl, 'domcontentloaded')).resolves.toBeUndefined();
+    await expect(scraper.navigateTo(loginPage, 'domcontentloaded')).resolves.toBeUndefined();
     await expect(scraper.navigateTo('https://hb2.bankleumi.co.il/other', 'domcontentloaded')).rejects.toThrow(aborted);
 
     goto.mockRejectedValue(new Error('Navigation timeout of 30000 ms exceeded'));
-    await expect(scraper.navigateTo(loginUrl, 'domcontentloaded')).rejects.toThrow('Navigation timeout');
+    await expect(scraper.navigateTo(loginPage, 'domcontentloaded')).rejects.toThrow('Navigation timeout');
+  });
+
+  test('should start loading the home page without waiting for it to finish', async () => {
+    const scraper = new LeumiScraper({
+      ...testsConfig.options,
+      companyId: COMPANY_ID,
+    });
+    const goto = jest.fn().mockReturnValue(new Promise(() => {}));
+    (scraper as any).page = fakePage({ goto });
+    const homeUrl = scraper.getLoginOptions({ username: 'user', password: 'password' }).loginUrl;
+
+    await expect(scraper.navigateTo(homeUrl, 'domcontentloaded')).resolves.toBeUndefined();
+    expect(goto).toHaveBeenCalledWith('https://www.leumi.co.il/he');
   });
 
   test('should not wait for another navigation after opening the login page', async () => {
-    const page = {
-      waitForSelector: jest.fn().mockResolvedValue(undefined),
-      waitForFunction: jest.fn().mockResolvedValue(undefined),
-      evaluate: jest.fn().mockResolvedValue(undefined),
-      $eval: jest.fn().mockResolvedValue('https://hb2.bankleumi.co.il/login'),
-      goto: jest.fn().mockResolvedValue(undefined),
-      waitForNavigation: jest.fn().mockRejectedValue(new Error('no second navigation')),
-    };
+    const page = fakePage({ waitForNavigation: jest.fn().mockRejectedValue(new Error('no second navigation')) });
     const scraper = new LeumiScraper({
       ...testsConfig.options,
       companyId: COMPANY_ID,
@@ -91,14 +109,7 @@ describe('Leumi legacy scraper', () => {
       companyId: COMPANY_ID,
       startDate: new Date('2026-05-25T00:00:00.000Z'),
     };
-    const page = {
-      waitForSelector: jest.fn().mockResolvedValue(undefined),
-      waitForFunction: jest.fn().mockResolvedValue(undefined),
-      evaluate: jest.fn().mockResolvedValue(undefined),
-      $eval: jest.fn().mockResolvedValue('https://hb2.bankleumi.co.il/login'),
-      goto: jest.fn().mockResolvedValue(undefined),
-      waitForNavigation: jest.fn().mockResolvedValue(undefined),
-    };
+    const page = fakePage();
     const scraper = new LeumiScraper(options as any);
 
     (scraper as any).page = page;
