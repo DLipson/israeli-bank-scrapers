@@ -370,15 +370,71 @@ async function fetchSavingsAccounts(
   return allSavingsAccounts;
 }
 
+// --- Login tracing (debug namespace israeli-bank-scrapers:leumi). Never logs credentials,
+// request bodies, or query strings. ---
+
+const tracedPages = new WeakSet<Page>();
+const TRACED_RESOURCE_TYPES = ['document', 'xhr', 'fetch'];
+
+/** Origin and path only, so tracking codes and tokens in query strings never reach the log. */
+function shortUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return url.slice(0, 120);
+  }
+}
+
+/** Logs page changes, Leumi page and API responses, failed requests, and page script errors. */
+function traceLeumiPage(page: Page): void {
+  if (tracedPages.has(page)) return;
+  tracedPages.add(page);
+  page.on('framenavigated', frame => {
+    if (frame === page.mainFrame()) debug(`page changed: ${shortUrl(frame.url())}`);
+  });
+  page.on('response', response => {
+    const request = response.request();
+    const type = request.resourceType();
+    if (!TRACED_RESOURCE_TYPES.includes(type) || !/leumi/i.test(response.url())) return;
+    const location = response.headers().location;
+    const redirect = location ? ` -> ${shortUrl(location)}` : '';
+    debug(`${type} ${request.method()} ${response.status()} ${shortUrl(response.url())}${redirect}`);
+  });
+  page.on('requestfailed', request => {
+    if (!TRACED_RESOURCE_TYPES.includes(request.resourceType())) return;
+    debug(`request failed (${request.failure()?.errorText}): ${request.method()} ${shortUrl(request.url())}`);
+  });
+  page.on('console', message => {
+    if (message.type() === 'error') debug(`page script error: ${message.text().slice(0, 200)}`);
+  });
+}
+
+/** Logs where the page is and what it shows. Input values are not part of innerText. */
+async function logPageState(page: Page, label: string): Promise<void> {
+  try {
+    const state = await page.evaluate(() => ({
+      title: document.title,
+      text: (document.body?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 300),
+    }));
+    debug(`${label}: url ${shortUrl(page.url())}, title "${state.title}", text "${state.text}"`);
+  } catch (error) {
+    debug(`${label}: url ${shortUrl(page.url())}, page text unavailable (${String(error)})`);
+  }
+}
+
 async function openLoginFromHomePage(page: Page): Promise<void> {
   debug('wait for the "enter account" link on the home page');
   await waitUntilElementFound(page, ENTER_ACCOUNT_SELECTOR, true);
+  const href = await page.$eval(ENTER_ACCOUNT_SELECTOR, element => (element as HTMLAnchorElement).href).catch(() => '');
+  debug(`"enter account" link found on ${shortUrl(page.url())}, points to ${shortUrl(href)}`);
   await closeCookieAlert(page);
   debug('click the "enter account" link');
   await page.click(ENTER_ACCOUNT_SELECTOR);
   // The login page is still loading (and changes page once more), so do not run page scripts
   // such as closeCookieAlert here; the selector waits below survive page changes.
   await waitForLoginFields(page);
+  await logPageState(page, 'login form ready');
 }
 
 async function waitForLoginFields(page: Page): Promise<void> {
@@ -391,14 +447,21 @@ async function waitForLoginFields(page: Page): Promise<void> {
 }
 
 async function waitForPostLogin(page: Page): Promise<void> {
-  await Promise.race([
-    waitUntilElementFound(page, 'a[title="דלג לחשבון"]', true, 60000),
-    waitUntilElementFound(page, 'div.main-content', false, 60000),
-    page.waitForSelector(`xpath//div[contains(string(),"${INVALID_PASSWORD_MSG}")]`, {
-      timeout: 60000,
-    }),
-    waitUntilElementFound(page, CHANGE_PASSWORD_MODAL_SELECTOR, true, 60000),
-  ]);
+  debug(`login form submitted on ${shortUrl(page.url())}; waiting up to 60 s for the account page`);
+  try {
+    await Promise.race([
+      waitUntilElementFound(page, 'a[title="דלג לחשבון"]', true, 60000),
+      waitUntilElementFound(page, 'div.main-content', false, 60000),
+      page.waitForSelector(`xpath//div[contains(string(),"${INVALID_PASSWORD_MSG}")]`, {
+        timeout: 60000,
+      }),
+      waitUntilElementFound(page, CHANGE_PASSWORD_MODAL_SELECTOR, true, 60000),
+    ]);
+    debug(`after login: ${shortUrl(page.url())}`);
+  } catch (error) {
+    await logPageState(page, 'no account page after login');
+    throw error;
+  }
 }
 
 type ScraperSpecificCredentials = { username: string; password: string };
@@ -412,6 +475,8 @@ class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
    */
   async navigateTo(url: string, waitUntil?: PuppeteerLifeCycleEvent, retries?: number): Promise<void> {
     if (url === HOME_URL) {
+      traceLeumiPage(this.page);
+      debug(`open ${url} (not waiting for it to finish loading)`);
       // On some networks the home page takes more than 30 s to reach DOMContentLoaded, but its
       // "enter account" link renders early. Start loading and let checkReadiness wait for the link.
       this.page.goto(url).catch(error => debug(`home page did not finish loading: ${String(error)}`));
@@ -436,6 +501,7 @@ class LeumiScraper extends BaseScraperWithBrowser<ScraperSpecificCredentials> {
       // Only the page's HTML is needed; the login form is awaited in checkReadiness.
       waitUntil: 'domcontentloaded' as const,
       checkReadiness: async () => openLoginFromHomePage(this.page),
+      preAction: async () => logPageState(this.page, 'about to fill the login form'),
       postAction: async () => waitForPostLogin(this.page),
       possibleResults: getPossibleLoginResults(),
     };
